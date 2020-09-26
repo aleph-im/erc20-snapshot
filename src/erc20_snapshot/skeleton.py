@@ -18,30 +18,18 @@ Note: This skeleton file can be safely removed if not needed!
 import argparse
 import sys
 import logging
+import json
 
 from erc20_snapshot import __version__
+    
+from .erc20 import process_contract_history
+from .settings import settings
 
 __author__ = "Jonathan Schemoul"
 __copyright__ = "Jonathan Schemoul"
 __license__ = "mit"
 
 _logger = logging.getLogger(__name__)
-
-
-def fib(n):
-    """Fibonacci example function
-
-    Args:
-      n (int): integer
-
-    Returns:
-      int: n-th Fibonacci number
-    """
-    assert n > 0
-    a, b = 1, 1
-    for i in range(n-1):
-        a, b = b, a+b
-    return a
 
 
 def parse_args(args):
@@ -54,16 +42,22 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Just a Fibonacci demonstration")
+        description="Token snapshot")
     parser.add_argument(
         "--version",
         action="version",
         version="erc20-snapshot {ver}".format(ver=__version__))
     parser.add_argument(
-        dest="n",
-        help="n-th Fibonacci number",
+        dest="height",
+        help="Target height",
         type=int,
-        metavar="INT")
+        metavar="HEIGHT")
+    parser.add_argument(
+      '-o', '--output',
+        dest="output",
+        help="Output file",
+        default="balances.json",
+        type=str)
     parser.add_argument(
         "-v",
         "--verbose",
@@ -100,10 +94,12 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    _logger.debug("Starting crazy calculations...")
-    print("The {}-th Fibonacci number is {}".format(args.n, fib(args.n)))
-    _logger.info("Script ends here")
-
+    values = process_contract_history(settings.ethereum_token_contract,
+                                      settings.ethereum_min_height,
+                                      args.height)
+    with open(args.output, 'w') as outfile:
+        json.dump({k:v for k,v in values.items() if v > 0}, outfile)
+    
 
 def run():
     """Entry point for console_scripts
